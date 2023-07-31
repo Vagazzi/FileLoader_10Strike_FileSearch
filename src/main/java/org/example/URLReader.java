@@ -1,3 +1,5 @@
+package org.example;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -13,29 +15,39 @@ import java.util.stream.Stream;
 public class URLReader {
     private final List<String> URLs = new ArrayList<>();
 
+    private final List<String> fileSizes = new ArrayList<>();
+
+    private static final String fileSizeOpeningTag = "<TD align=\"right\">";
+
+    private static final String fileSizeEndingTag = "б</TD>";
+
     private static final String CONFIG_PATH = "C:\\FileLoader\\outcomeURLsConfig.txt";
 
     // прочитать с конфига путь к директории с файлами отчётов
-    public String getOutcomeReportsFilePath() throws IOException {
+    private String getOutcomeReportsFilePath() throws IOException {
         Path path = Paths.get(CONFIG_PATH);
         return Files.readAllLines(path).get(0);
     }
 
     // получить количество файлов в директории
-    public int getCountOfFiles() throws IOException {
+    private int getCountOfFiles() throws IOException {
         String directoryPath = getOutcomeReportsFilePath();
         return Objects.requireNonNull(new File(directoryPath).list()).length;
     }
 
+    public int getCountOfFiles(String directory){
+        return Objects.requireNonNull(new File(directory).list()).length;
+    }
+
     // получить список файлов в директории с отчётом
-    public List<String> getReportsList() throws IOException {
+    private List<String> getReportsList() throws IOException {
         return Stream.of(Objects.requireNonNull(new File(getOutcomeReportsFilePath()).listFiles()))
                 .filter(file -> !file.isDirectory())
                 .map(File::getName)
                 .collect(Collectors.toList());
     }
 
-    // извлечь теги с ссылками
+    // извлечь теги с ссылками и извлечь размеры файлов
     public List<String> readReport() throws IOException {
         List<String> files = getReportsList();
         for (int i = 0; i < getCountOfFiles(); i++) {
@@ -49,6 +61,10 @@ public class URLReader {
                         String result = returnQuotationString(searchable);
                         URLs.add(result);
                     }
+                    if (searchable.contains("<TD align=\"right\">") && searchable.contains("б</TD>")) {
+                        String value = searchable.substring(fileSizeOpeningTag.length() + 2, searchable.length() - fileSizeEndingTag.length());
+                        fileSizes.add(value);
+                    }
                 }
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
@@ -56,13 +72,15 @@ public class URLReader {
         }
         for (int i = 0; i < URLs.size(); i++) {
             System.out.println(i + " - " + URLs.get(i));
+            System.out.println(i + " His filesize - " + fileSizes.get(i) + " bytes");
         }
         return URLs;
     }
 
     // получить имена файлов
     public List<String> getFileNames() {
-        return URLs.stream().map(s -> s.substring(s.lastIndexOf("\\") + 1)).collect(Collectors.toList());
+        return URLs.stream().map(s -> s.substring(s.lastIndexOf("\\") + 1))
+                .collect(Collectors.toList());
     }
 
     // получить имена корневых каталогов
@@ -87,4 +105,12 @@ public class URLReader {
         }
         return searchable.substring(values.get(0) + 1, values.get(1));
     }
+
+    //сконвертировать полученные размеры файлов из String в Integer
+    public List<Integer> getFileSizes(){
+        return fileSizes.stream().map(s->s.replaceAll(" ",""))
+                .map(Integer::valueOf)
+                .collect(Collectors.toList());
+    }
+
 }
